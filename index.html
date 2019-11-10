@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>201911_事前練習</title>
+</head>
+<body>
+<div id="tgt"></div>
+<script type="text/x-template" id="tmpl-base">
+    <div class="form">
+        <form action=".">
+            <select_parts :form_data="form_data.select1"></select_parts>
+            <select_parts :form_data="form_data.select2" :parent_level_value="form_data.select1.value" @reset="reset"></select_parts>
+            <select_parts :form_data="form_data.select3"></select_parts>
+            <chceckbox_parts :form_data="form_data.agree1"></chceckbox_parts>
+            <chceckbox_parts :form_data="form_data.agree2"></chceckbox_parts>
+            <p><a href="#" @click.prevent="confirm">送信</a></p>
+        </form>
+    </div>
+</script>
+<script type="text/x-template" id="tmpl-base-select_parts">
+    <dl>
+        <dt>{{form_data.label}}</dt>
+        <dd>
+            <p>{{option_label}}</p>
+            <select :name="form_data.name" v-model="form_data.value" :disabled="disabled">
+                <option v-for="option in options_filtered" :value="option.value">{{option.label}}</option>
+            </select>
+        </dd>
+        <dd v-if="form_data.is_err && !disabled">{{form_data.err_msg}}</dd>
+    </dl>
+</script>
+<script type="text/x-template" id="tmpl-base-chceckbox_parts">
+    <div>
+        <input type="checkbox" :name="form_data.name" :id="form_data.name" :true-value="form_data.true_value" :false-value="form_data.false_value" v-model="form_data.value"><label :for="form_data.name">{{form_data.label}}</label>
+        <p v-if="form_data.is_err">{{form_data.err_msg}}</p>
+    </div>
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+<script>
+    Vue.component('select_parts',{
+        props:{
+            form_data:{
+                type:Object,
+                required:true
+            },
+            parent_level_value:{
+                type:[Number,String]
+            }
+        },
+        date:function(){
+            return {
+
+            }
+        },
+        computed: {
+            option_label:function(){
+                return this.form_data.options.reduce(function(acc, option,index,ary){
+                    return option.value === acc ? option.label : acc;
+                },this.form_data.value);
+            },
+            disabled:function(){
+                return this.parent_level_value !== void 0 && !this.parent_level_value
+            },
+            /* 上位階層の絞り込みがある場合は絞り込んだoptionsを返す、上位階層の絞り込みがなければすべてのoptionsを返す */
+            options_filtered:function(){
+                return this.parent_level_value === void 0 ? this.form_data.options : this.form_data.options.filter(function(option){
+                    return option.value === '' || !option.parent_values || option.parent_values.some(function(value){
+                        return value === this.parent_level_value;
+                    },this);
+                },this);
+            }
+        },
+        created:function(){
+            // console.log(this.parent_level_value);
+        },
+        watch: {
+            parent_level_value:function(before_value, current_value){
+                console.log(before_value, current_value);
+                this.$emit('reset',this.form_data.name);
+
+            }
+        },
+        template: '#tmpl-base-select_parts'
+    });
+    Vue.component('chceckbox_parts',{
+        props:{
+            form_data:{
+                type:Object,
+                required:true
+            }
+        },
+        template: '#tmpl-base-chceckbox_parts'
+    });
+    new Vue({
+        el:'#tgt',
+        template:"#tmpl-base",
+        data:{
+            form_data:{
+                select1:{
+                    label:'選択１',
+                    name:'select1',
+                    value:'',
+                    options:[
+                        {label:'↓選択してください',value:''},
+                        {label:'op1-1',value:1},
+                        {label:'op1-2',value:2},
+                        {label:'op1-3',value:3},
+                        {label:'op1-4',value:4},
+                    ],
+                    is_err:false,
+                    err_msg:'選択してください',
+                    note:''
+                },
+                select2:{
+                    label:'選択２',
+                    name:'select2',
+                    value:'',
+                    options:[
+                        {label:'↓選択してください',value:''},
+                        {label:'op2-1',value:1,parent_values:[1]},
+                        {label:'op2-2',value:2,parent_values:[2,3]},
+                        {label:'op2-3',value:3,parent_values:[1,3]},
+                        {label:'op2-4',value:4,parent_values:[4]},
+                    ],
+                    is_err:false,
+                    err_msg:'選択してください',
+                    note:''
+                },
+                select3:{
+                    label:'選択3',
+                    name:'select3',
+                    value:'',
+                    options:[
+                        {label:'↓選択してください',value:''},
+                        {label:'op3-1',value:1,parent_values:[1]},
+                        {label:'op3-2',value:2,parent_values:[2,3]},
+                        {label:'op3-3',value:3,parent_values:[1,3]},
+                        {label:'op3-4',value:4,parent_values:[4]},
+                    ],
+                    is_err:false,
+                    err_msg:'選択してください',
+                    note:''
+                },
+                agree1:{
+                    label:'同意事項1です',
+                    name:'agree1',
+                    value:1,
+                    true_value:1,
+                    false_falue:'',
+                    is_err:false,
+                    err_msg:'同意が必要',
+                    note:''
+                },
+                agree2:{
+                    label:'同意事項2です',
+                    name:'agree2',
+                    value:'',
+                    true_value:1,
+                    false_falue:'',
+                    is_err:false,
+                    err_msg:'同意が必要',
+                    note:''
+                }
+            }
+        },
+        methods:{
+            reset:function(tgt){
+                if(this.form_data[tgt]){
+                    this.form_data[tgt].value = '';
+                }
+            },
+            confirm:function(){
+                console.log('確認');
+                /* form_data をいったん配列にしてまとめてチェック。 */
+                let err_flg = Object.keys(this.form_data).map(function(key){
+                    return this[key];
+                },this.form_data).reduce(function(acc,form_data){
+                    console.log(form_data.name, form_data.value);
+                    form_data.is_err = !form_data.value;
+                    return form_data.is_err ? true : acc;
+                }, false);
+                if(!err_flg){
+                    console.log('確認開く');
+
+                }
+            }
+        }
+    });
+</script>
+</body>
+</html>
