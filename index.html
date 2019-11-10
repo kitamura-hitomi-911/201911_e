@@ -8,21 +8,31 @@
 <div id="tgt"></div>
 <script type="text/x-template" id="tmpl-base">
     <div class="form">
-        <form action=".">
+        <form action="." name="frm">
             <select_parts :form_data="form_data.select1"></select_parts>
-            <select_parts :form_data="form_data.select2" :parent_level_value="form_data.select1.value" @reset="reset"></select_parts>
+            <select_parts :form_data="form_data.select2" :parent_level_value="form_data.select1.value" @reset="reset">
+                <template v-slot:add_alert>
+                    <p v-if="!form_data.select1.value">ふが</p>
+                </template>
+            </select_parts>
             <select_parts :form_data="form_data.select3"></select_parts>
             <chceckbox_parts :form_data="form_data.agree1"></chceckbox_parts>
-            <chceckbox_parts :form_data="form_data.agree2"></chceckbox_parts>
+            <chceckbox_parts :form_data="form_data.agree2">
+                <template v-slot:add_label>
+                    <a href="#">リンク１</a> / <a href="#">リンク2</a>
+                </template>
+            </chceckbox_parts>
             <p><a href="#" @click.prevent="confirm">送信</a></p>
         </form>
+        <confirm></confirm>
     </div>
 </script>
 <script type="text/x-template" id="tmpl-base-select_parts">
     <dl>
         <dt>{{form_data.label}}</dt>
         <dd>
-            <p>{{option_label}}</p>
+            <slot name="add_alert"></slot>
+            <p>{{current_label}}</p>
             <select :name="form_data.name" v-model="form_data.value" :disabled="disabled">
                 <option v-for="option in options_filtered" :value="option.value">{{option.label}}</option>
             </select>
@@ -32,8 +42,16 @@
 </script>
 <script type="text/x-template" id="tmpl-base-chceckbox_parts">
     <div>
-        <input type="checkbox" :name="form_data.name" :id="form_data.name" :true-value="form_data.true_value" :false-value="form_data.false_value" v-model="form_data.value"><label :for="form_data.name">{{form_data.label}}</label>
+        <input type="checkbox" :name="form_data.name" :id="form_data.name" value="1" v-model="form_data.checked"><label :for="form_data.name">{{form_data.label}}</label>
+        <slot name="add_label"></slot>
         <p v-if="form_data.is_err">{{form_data.err_msg}}</p>
+    </div>
+</script>
+<script type="text/x-template" id="tmpl-confirm">
+    <div>
+        確認画面<br>
+
+        <p><a href="#" @click.prevent="submit">送信</a></p>
     </div>
 </script>
 
@@ -55,11 +73,12 @@
             }
         },
         computed: {
-            option_label:function(){
+            current_label:function(){
                 return this.form_data.options.reduce(function(acc, option,index,ary){
                     return option.value === acc ? option.label : acc;
                 },this.form_data.value);
             },
+            /* 上位階層が指定されている場合は、上位階層の値がなければ disabled*/
             disabled:function(){
                 return this.parent_level_value !== void 0 && !this.parent_level_value
             },
@@ -72,14 +91,10 @@
                 },this);
             }
         },
-        created:function(){
-            // console.log(this.parent_level_value);
-        },
         watch: {
             parent_level_value:function(before_value, current_value){
-                console.log(before_value, current_value);
+                // 上位階層の値がかわれば初期値に戻す
                 this.$emit('reset',this.form_data.name);
-
             }
         },
         template: '#tmpl-base-select_parts'
@@ -93,10 +108,22 @@
         },
         template: '#tmpl-base-chceckbox_parts'
     });
+    Vue.component('confirm',{
+        props:{
+
+        },
+        template:"#tmpl-confirm",
+        methods:{
+            submit:function(){
+                document.frm.submit();
+            }
+        }
+    });
     new Vue({
         el:'#tgt',
         template:"#tmpl-base",
         data:{
+            item1:'ほげ',
             form_data:{
                 select1:{
                     label:'選択１',
@@ -146,9 +173,7 @@
                 agree1:{
                     label:'同意事項1です',
                     name:'agree1',
-                    value:1,
-                    true_value:1,
-                    false_falue:'',
+                    checked:true,
                     is_err:false,
                     err_msg:'同意が必要',
                     note:''
@@ -156,9 +181,7 @@
                 agree2:{
                     label:'同意事項2です',
                     name:'agree2',
-                    value:'',
-                    true_value:1,
-                    false_falue:'',
+                    checked:false,
                     is_err:false,
                     err_msg:'同意が必要',
                     note:''
@@ -177,13 +200,21 @@
                 let err_flg = Object.keys(this.form_data).map(function(key){
                     return this[key];
                 },this.form_data).reduce(function(acc,form_data){
-                    console.log(form_data.name, form_data.value);
-                    form_data.is_err = !form_data.value;
+                    form_data.is_err = !form_data.value && !form_data.checked; //入力されていればどちらかがtrue
                     return form_data.is_err ? true : acc;
                 }, false);
                 if(!err_flg){
                     console.log('確認開く');
-
+                    let confirm_data = ['select1','select2','select3'].map(function(name){
+                        let form_data = this.form_data[name];
+                        return {
+                            label : form_data.label,
+                            current_label: form_data.options.reduce(function(acc, option){
+                                return option.value === acc ? option.label : acc;
+                            },form_data.value)
+                        };
+                    },this);
+                    console.log(confirm_data);
                 }
             }
         }
